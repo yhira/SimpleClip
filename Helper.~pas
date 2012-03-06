@@ -1,0 +1,156 @@
+unit Helper;
+
+interface
+
+uses Windows, Classes, SysUtils, Controls;
+
+//アプリがデスクトップのワークエリア内にあるか。無かったらエリア内に移動
+procedure OnWorkArea(Ctrl: TControl);
+//フォルダ内全削除
+procedure DeleteDir(Dir: string; IsDelRoot: Boolean = True);
+////フォルダに存在しないフォルダ名を取得
+//function NotExistDirName(const FileName: string): string;
+//ファイル禁則文字を修正したファイル名を返す
+function NotErrorFileName(const FileName: string): string; 
+procedure GetHotKeyFromShortCut(ShortCut: TShortCut; var fsModifiers, vk: UINT);
+
+
+implementation
+                
+const
+	ErrorFileChar: String = '\/:;*?"<>|';
+	ErrorFileCharZen: String = '￥／：；＊？”＜＞｜';
+var
+  FileSL, DirSL: TStringList;
+
+function NotErrorFileName(const FileName: string): string;  
+var
+	i: Integer;
+  s: string;
+begin
+  s := FileName;
+  s := StringReplace(s, #9, ' ', [rfReplaceAll]);
+  for i := 1 to Length(ErrorFileChar) do begin
+    s := StringReplace(s, ErrorFileChar[i], Copy(ErrorFileCharZen, ((i-1)*2+1), 2), [rfReplaceAll]);
+  end;
+  Result := s;
+end;
+     
+//function NotExistDirName(const FileName: string): string;
+//var
+//	Dir, Name, nName, s: string;
+//  i: Integer;
+//begin
+//  s := ExcludeTrailingPathDelimiter(FileName);
+//  Dir := ExtractFilePath(s);
+//  Name := ExtractFileNameOnly(s);
+//
+//  if DirectoryExists(s) then begin
+//    i := 2;
+//    nName := Name;
+//    while DirectoryExists(Dir + nName) do begin
+//      nName := Name + '(' + IntToStr(i) + ')';
+//      Result := nName;
+//      Inc(i);
+//    end;
+//  end else begin
+//    Result := Name;
+//	end;
+//end;
+
+procedure AddDelete(Dir: string);
+var
+  Rec: TSearchRec;
+  Found: Integer;
+  s: string;
+begin
+  Found := FindFirst(IncludeTrailingPathDelimiter(Dir) + '*.*', faAnyFile, Rec);
+  try
+    while (Found = 0) do begin
+      if (Rec.Name <> '..') and (Rec.Name <> '.') then begin
+        s := IncludeTrailingPathDelimiter(Dir) + Rec.Name;
+        if (Rec.Attr and SysUtils.faDirectory > 0) then begin
+          DirSL.Add(s);
+          AddDelete(s);
+        end;
+        if (Rec.Attr and SysUtils.faDirectory) = 0 then begin
+          FileSL.Add(s);
+        end;
+      end;
+      Found := FindNext(Rec);
+    end;
+  finally
+    FindClose(Rec);
+  end;
+end;
+  
+procedure DeleteDir(Dir: string; IsDelRoot: Boolean);
+var i: Integer;
+begin
+  DirSL := TStringList.Create;
+  FileSL := TStringList.Create;
+  try
+    AddDelete(Dir);
+    for i := FileSL.Count-1 downto 0 do begin
+      FileSetReadOnly(FileSL[i], False);           
+      DeleteFile(FileSL[i]);
+    end;
+    for i := DirSL.Count-1 downto 0 do begin
+      FileSetReadOnly(ExcludeTrailingPathDelimiter(DirSL[i]), False);
+      RemoveDir(ExcludeTrailingPathDelimiter(DirSL[i]));
+    end;
+    if IsDelRoot then begin
+      FileSetReadOnly(ExcludeTrailingPathDelimiter(Dir), False);
+      RemoveDir(ExcludeTrailingPathDelimiter(Dir));
+    end;
+  finally
+    DirSL.Free;
+    FileSL.Free;
+  end;
+end;
+
+procedure GetHotKeyFromShortCut(ShortCut: TShortCut; var fsModifiers, vk: UINT);
+var
+  IsCtrl : Boolean;
+  IsAlt  : Boolean;
+  IsShift: Boolean;
+  IncCtrl, IncAlt, IncShift: Boolean;
+  sc: TShortCut;
+begin    
+  IncCtrl  := (ShortCut and scCtrl) <> 0;
+  IncAlt   := (ShortCut and scAlt) <> 0;
+  IncShift := (ShortCut and scShift) <> 0;
+  sc := ShortCut;
+  fsModifiers := 0;
+  if IncCtrl  then begin
+    sc := sc - scCtrl;
+    fsModifiers := fsModifiers or MOD_CONTROL;
+  end;
+  if IncAlt   then begin
+    sc := sc - scAlt; 
+    fsModifiers := fsModifiers or MOD_ALT;
+  end;
+  if IncShift then begin
+    sc := sc - scShift;  
+    fsModifiers := fsModifiers or MOD_SHIFT;
+  end;
+  vk := sc;
+end;
+
+procedure OnWorkArea(Ctrl: TControl);
+var
+	WRect: TRect;
+const
+	DEF = 0;
+begin
+  SystemParametersInfo(SPI_GETWORKAREA, 0, @WRect, 0);
+
+  if Ctrl.Width > (Screen.WorkAreaWidth - DEF) then Ctrl.Width := Screen.WorkAreaWidth - DEF * 2;
+  if Ctrl.Height > (Screen.WorkAreaHeight - DEF) then Ctrl.Height := Screen.WorkAreaHeight - DEF * 2;
+  if Ctrl.Left > WRect.Right - Ctrl.Width then Ctrl.Left := WRect.Right - Ctrl.Width - DEF;
+  if Ctrl.Left < WRect.Left then Ctrl.Left := WRect.Left + DEF;
+  if Ctrl.Top < WRect.Top then Ctrl.Top := WRect.Top + DEF;
+  if Ctrl.Top > WRect.Bottom - Ctrl.Height then Ctrl.Top := WRect.Bottom - Ctrl.Height - DEF;
+end;
+
+end.

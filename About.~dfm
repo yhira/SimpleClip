@@ -1,0 +1,90 @@
+object AboutForm: TAboutForm
+  Left = 382
+  Top = 193
+  BorderIcons = [biSystemMenu]
+  BorderStyle = bsToolWindow
+  BorderWidth = 2
+  Caption = #65418#65438#65392#65404#65438#65390#65437#24773#22577
+  ClientHeight = 142
+  ClientWidth = 229
+  Color = clWindow
+  Font.Charset = SHIFTJIS_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -12
+  Font.Name = #65325#65331' '#65328#12468#12471#12483#12463
+  Font.Style = []
+  OldCreateOrder = True
+  Position = poScreenCenter
+  OnClick = FormClick
+  OnCreate = FormCreate
+  OnKeyDown = FormKeyDown
+  DesignSize = (
+    229
+    142)
+  PixelsPerInch = 96
+  TextHeight = 12
+  object VersionLabel: TLabel
+    Left = 128
+    Top = 75
+    Width = 66
+    Height = 12
+    Anchors = [akLeft, akBottom]
+    Caption = 'VersionLabel'
+    Transparent = True
+    OnClick = FormClick
+  end
+  object URLLabel: TLabel
+    Left = 177
+    Top = 129
+    Width = 49
+    Height = 12
+    Alignment = taRightJustify
+    Anchors = [akRight, akBottom]
+    Caption = 'URLLabel'
+    Color = clWhite
+    Font.Charset = SHIFTJIS_CHARSET
+    Font.Color = clBlue
+    Font.Height = -12
+    Font.Name = #65325#65331' '#65328#12468#12471#12483#12463
+    Font.Style = []
+    ParentColor = False
+    ParentFont = False
+    Transparent = True
+    OnClick = URLLabelClick
+    OnMouseMove = URLLabelMouseMove
+    OnMouseLeave = URLLabelMouseLeave
+  end
+  object CopyRightLabel: TLabel
+    Left = 0
+    Top = 123
+    Width = 80
+    Height = 12
+    Anchors = [akLeft, akBottom]
+    Caption = 'CopyRightLabel'
+    Transparent = True
+    Visible = False
+  end
+  object TitleLabel: TLabel
+    Left = 64
+    Top = 56
+    Width = 82
+    Height = 19
+    Caption = 'SimpleClip'
+    Font.Charset = SHIFTJIS_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -19
+    Font.Name = #65325#65331' '#65328#12468#12471#12483#12463
+    Font.Style = []
+    ParentFont = False
+    OnClick = FormClick
+  end
+  object DbLabel: TLabel
+    Left = 184
+    Top = 118
+    Width = 41
+    Height = 12
+    Alignment = taRightJustify
+    Caption = 'DbLabel'
+    Layout = tlBottom
+  end
+end
