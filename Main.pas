@@ -497,16 +497,19 @@ begin
 
     //ファイル
     sl := TStringList.Create;
-    GetCopyFiles(sl);
-    ci := TClipItem.Create;
-    ci.ClipMode := cmDrop;
-    s := Trim(sl.Text);
-    ci.Text := s;
-    ci.Hash := ci.ClacHash;
-    ci.Name := GetItemName(ci);
-    AddTheTreeView(ci);
-
-    sl.Free;
+    try
+      GetCopyFiles(sl);
+      ci := TClipItem.Create;
+      ci.ClipMode := cmDrop;
+      s := Trim(sl.Text);
+//      if Trim(s) = '' then Exit;
+      ci.Text := s;
+      ci.Hash := ci.ClacHash;
+      ci.Name := GetItemName(ci);
+      AddTheTreeView(ci);
+    finally
+      sl.Free;
+    end;
   end;
 end;
 var
@@ -537,27 +540,22 @@ begin
 //  GetClassName(hFG, PChar(sClassName), 256);
   GetClassName(hFG, sClassName, 256);
 //  sClassName := Trim(sClassName);
-
+                            
+//  if Clipboard.HasFormat(CF_TEXT) then begin
+//    DOut('CF_TEXT');
+//  end;
+//  if Clipboard.HasFormat(CF_HDROP) then begin
+//    DOut('CF_HDROP');
+//  end;
 //  DOut('1');
 //  beep;
   if Clipboard.HasFormat(CF_TEXT) then begin
     if Option.IsTextExclusion then Exit;
     //テキスト
-    AddClipText;     //DOut('t');
-    
-//    //ファイル
-//    AddHDrop;
-//    try
-//      try
-//        s := Clipboard.AsText;
-//      except
-//
-//      end;
-//    finally
-//      AddTextToList(s);
-//    end;
+    AddClipText;
 
-  end else if Clipboard.HasFormat(CF_BITMAP) then  begin
+  end;
+  if Clipboard.HasFormat(CF_BITMAP) then  begin
     if Option.IsImageExclusion then Exit;
     //画像
     ci := TClipItem.Create;
@@ -576,9 +574,10 @@ begin
       bmp.Free;
 //      ms.Free;
     end;
-  end else if Clipboard.HasFormat(CF_HDROP) then begin
+  end;
+  if Clipboard.HasFormat(CF_HDROP) then begin
     if Option.IsDropExclusion then Exit;
-                  
+//
     //テキスト
     AddClipText;       //DOut('d');
     //ファイル
