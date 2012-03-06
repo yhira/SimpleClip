@@ -417,10 +417,15 @@ uses Types;
   begin
     Result := nil;
     t := TheTreeView;
+//    if Trim(ci.Text) = '' then begin
+//      ci.Free;
+//      exit;
+//    end;
     if t.Items.Count = 0 then begin
       Result := t.Items.AddObjectFirst(nil, ci.Name, ci);
     end else begin
       idx := TheTreeItemIndex(ci);
+//      DOutI(idx);
       if idx = -1 then begin
         for i := 0 to t.Items.Count-1 do begin
           n := t.Items[i];
@@ -460,13 +465,17 @@ uses Types;
   end;
   procedure TSimpleClipForm.AddTextToList(AText: string);
   var ci: TClipItem;
-  begin       
+  begin
+//    DOut(AText);
+//    DOut('----------');
+//    if Trim(AText) = '' then Exit;
     ci := TClipItem.Create;
     ci.ClipMode := cmText;
     ci.Name := GetAvailable(AText);
     ci.Text := AText;
     ci.Hash := ci.ClacHash;
     if ci.Name = '' then ci.Name := GetItemName(ci);
+//    DOut('t');
     AddTheTreeView(ci);
   end;
 
@@ -478,8 +487,9 @@ begin
     if Option.IsTextExclusion then Exit;
     //テキスト
     try
-      try
-        s := Clipboard.AsText;
+      try                              
+//        DOut(s);
+        s := Clipboard.AsText;   //beep;
       except
 
       end;
@@ -502,7 +512,9 @@ begin
       ci := TClipItem.Create;
       ci.ClipMode := cmDrop;
       s := Trim(sl.Text);
-//      if Trim(s) = '' then Exit;
+//      DOutb(s <> '');
+//      DOut(s);
+//      if Trim(sl[0]) = '' then Exit;
       ci.Text := s;
       ci.Hash := ci.ClacHash;
       ci.Name := GetItemName(ci);
@@ -541,20 +553,28 @@ begin
   GetClassName(hFG, sClassName, 256);
 //  sClassName := Trim(sClassName);
                             
-//  if Clipboard.HasFormat(CF_TEXT) then begin
-//    DOut('CF_TEXT');
-//  end;
+  if Clipboard.HasFormat(CF_TEXT) then begin
+    if Option.IsTextExclusion then Exit;     
+    Sleep(50);
+//    DOut('CF_TEXT');    beep;
+//    DOut(Clipboard.AsText);
+    if Trim(Clipboard.AsText) <> '' then
+      AddClipText;
+  end;
 //  if Clipboard.HasFormat(CF_HDROP) then begin
-//    DOut('CF_HDROP');
+//    Sleep(50);
+////    DOut('CF_HDROP');
 //  end;
 //  DOut('1');
 //  beep;
-  if Clipboard.HasFormat(CF_TEXT) then begin
-    if Option.IsTextExclusion then Exit;
-    //テキスト
-    AddClipText;
-
-  end;
+//  if Clipboard.HasFormat(CF_TEXT) then begin
+//    if Option.IsTextExclusion then Exit;
+//    //テキスト
+//    AddClipText;
+////    //ファイル
+////    AddHDrop;
+//
+//  end;
   if Clipboard.HasFormat(CF_BITMAP) then  begin
     if Option.IsImageExclusion then Exit;
     //画像
@@ -579,8 +599,9 @@ begin
     if Option.IsDropExclusion then Exit;
 //
     //テキスト
-    AddClipText;       //DOut('d');
+//    AddClipText; //DOut('d');
     //ファイル
+    Sleep(50);
     AddHDrop;
 //    sl := TStringList.Create;
 //    GetCopyFiles(sl);
@@ -1015,12 +1036,12 @@ begin
   MS := TMemoryStream.Create;
   try
     if Clipboard.HasFormat(CF_HDROP) then begin
-      ClipBoard.Open;
+//      ClipBoard.Open;
       hBuf := Clipboard.GetAsHandle(CF_HDROP);
       p := GlobalLock(hBuf);
       MS.WriteBuffer(p^,GlobalSize(hBuf));
       GlobalUnlock(hBuf);
-      Clipboard.Close;
+//      Clipboard.Close;
 
       MS.Position := 0;
       MS.Read(DF,SizeOf(TDropFiles));
