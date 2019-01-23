@@ -9,6 +9,8 @@ uses
   Forms,
   Windows,
   Messages,
+  Classes,
+  SysUtils,
   Main in 'Main.pas' {SimpleClipForm},
   CommModules in 'CommModules.pas',
   OptionObject in 'OptionObject.pas',
@@ -23,10 +25,20 @@ uses
 
 const SIMPLECLIP_MUTEX_NAME = 'SimpleClip_c1qr5qrkxrsppj2';
 var
-  hMutex, hWind, hOwner: HWND;
-begin    
+  hMutex, hWind, hOwner: HWND; n: Integer; sl: TStringList;
+begin
+  n := 90000;
+  if FileExists('wait.txt') then begin
+    sl := TStringList.Create;
+    try
+      sl.LoadFromFile('wait.txt');
+      n := StrToIntDef(Trim(sl.Text), 90000);
+    finally
+      sl.Free;
+    end;
+  end;
   //２分経つまで待機
-  while GetTickCount < 90000 do begin
+  while GetTickCount < n do begin
     //Exit;  //起動を止めるときはコメントをを外す
     Sleep(1000);
   end;

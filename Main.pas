@@ -105,6 +105,13 @@ type
     O2: TMenuItem;
     A1: TMenuItem;
     WebSearchInitMemo: TMemo;
+    SortDateAction: TAction;
+    SortNameAction: TAction;
+    SortTypeAction: TAction;
+    N15: TMenuItem;
+    N16: TMenuItem;
+    N17: TMenuItem;
+    N18: TMenuItem;
     procedure FormCreate(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormDestroy(Sender: TObject);
@@ -185,7 +192,12 @@ type
     procedure NewDbActionExecute(Sender: TObject);
     procedure ReadDbActionExecute(Sender: TObject);
     procedure SaveDbActionExecute(Sender: TObject);
-    procedure ApplicationEvents1Idle(Sender: TObject; var Done: Boolean);  
+    procedure ApplicationEvents1Idle(Sender: TObject; var Done: Boolean);
+    procedure TheTreeViewCompare(Sender: TObject; Node1, Node2: TTreeNode;
+      Data: Integer; var Compare: Integer);
+    procedure SortDateActionExecute(Sender: TObject);
+    procedure SortNameActionExecute(Sender: TObject);
+    procedure SortTypeActionExecute(Sender: TObject);
   private
     { Private 宣言 }
 //    __NextHandle: HWND;
@@ -217,6 +229,8 @@ type
     FScriptsDirPath: string;
     FTextScriptsDirPath: string;
     FHiddenLock: Boolean;
+    FSortAsc: Boolean;
+    FSortMode: TSortMode;
     procedure FormWndProc(var Message: TMessage);
     procedure TheTreeWndProc(var Message: TMessage);
     procedure Commit;
@@ -254,6 +268,11 @@ type
     procedure SetHiddenLock(const Value: Boolean);
     function GetAvailableLine(AText: string): string;
     procedure SetFormsCaption(s: string);
+    procedure SetSortAsc(const Value: Boolean);
+    procedure SetSortMode(const Value: TSortMode);
+    procedure SortTree;
+    procedure SetNodeImage(Node: TTreeNode);
+    procedure SetSortCheck;
   protected
 //    procedure WMDrawClipboard(var Message: TWMDrawClipboard);
 //      message WM_DRAWCLIPBOARD;
@@ -292,6 +311,8 @@ type
     property ScriptsDirPath: string read GetScriptsDirPath;
     property TextScriptsDirPath: string read GetTextScriptsDirPath;
     property HiddenLock: Boolean read FHiddenLock write SetHiddenLock;
+    property SortMode: TSortMode read FSortMode write SetSortMode;
+    property SortAsc: Boolean read FSortAsc write SetSortAsc;
   end;
 
 //  procedure InstallHook(hWin: HWND); external 'getmsg.dll';
@@ -310,7 +331,7 @@ var sCaption, sClassName: array[0..255] of Char;
 
 implementation
 
-uses Types;
+uses Types, Math, DateUtils;
 
 {$R *.dfm}
 
@@ -554,8 +575,9 @@ begin
 //  sClassName := Trim(sClassName);
                             
   if Clipboard.HasFormat(CF_TEXT) then begin
-    if Option.IsTextExclusion then Exit;     
-    Sleep(50);
+    if Option.IsTextExclusion then Exit;
+//    Application.ProcessMessages;
+    Sleep(20);
 //    DOut('CF_TEXT');    beep;
 //    DOut(Clipboard.AsText);
     if Trim(Clipboard.AsText) <> '' then
@@ -576,7 +598,8 @@ begin
 //
 //  end;
   if Clipboard.HasFormat(CF_BITMAP) then  begin
-    if Option.IsImageExclusion then Exit;
+    if Option.IsImageExclusion then Exit; 
+    Sleep(20);
     //画像
     ci := TClipItem.Create;
     ci.ClipMode := cmImage;
@@ -600,8 +623,9 @@ begin
 //
     //テキスト
 //    AddClipText; //DOut('d');
-    //ファイル
-    Sleep(50);
+    //ファイル    
+//    Application.ProcessMessages;
+    Sleep(20);
     AddHDrop;
 //    sl := TStringList.Create;
 //    GetCopyFiles(sl);
@@ -955,7 +979,7 @@ procedure TSimpleClipForm.LoadFromIni;
 begin
   with TheIniFile do begin
     ReadFormEx2('Window', Self);
-    IsTopMost := ReadBool('WndOption', 'IsTopMost', True);  
+    IsTopMost := ReadBool('WndOption', 'IsTopMost', True);
     HiddenLock := ReadBool('WndOption', 'HiddenLock', False);
     LastOptTabIndex := ReadInt('WndOption', 'LastOptTabIndex', 0);
     TextDialogInitialDir := ReadStr('WndOption',
@@ -966,6 +990,9 @@ begin
       'TextDialogFilterIndex', SaveTextDialog.FilterIndex);
     ImageDialogFilterIndex := ReadInt('WndOption',
       'ImageDialogFilterIndex', SaveImageDialog.FilterIndex);
+    SortAsc := ReadBool('WndOption', 'SortAsc', True);
+    FSortMode := TSortMode(ReadInt('WndOption', 'SortMode', Ord(smDate)));
+    SetSortCheck;
   end;
 end;
 
@@ -976,10 +1003,12 @@ begin
     WriteBool('WndOption', 'IsTopMost', IsTopMost);   
     WriteBool('WndOption', 'HiddenLock', HiddenLock);
     WriteInt('WndOption', 'LastOptTabIndex', LastOptTabIndex);
-    WriteStr('WndOption', 'TextDialogInitialDir', TextDialogInitialDir);  
+    WriteStr('WndOption', 'TextDialogInitialDir', TextDialogInitialDir);
     WriteStr('WndOption', 'ImageDialogInitialDir', ImageDialogInitialDir);
     WriteInt('WndOption', 'TextDialogFilterIndex', TextDialogFilterIndex);
-    WriteInt('WndOption', 'ImageDialogFilterIndex', ImageDialogFilterIndex);
+    WriteInt('WndOption', 'ImageDialogFilterIndex', ImageDialogFilterIndex); 
+    WriteBool('WndOption', 'SortAsc', SortAsc);
+    WriteInt('WndOption', 'SortMode', Ord(SortMode));
 
     Update;
   end;
@@ -1075,8 +1104,7 @@ begin
   end;
 end;
 
-procedure TSimpleClipForm.TheTreeViewAddition(Sender: TObject;
-  Node: TTreeNode);
+procedure TSimpleClipForm.SetNodeImage(Node: TTreeNode);
 var ci: TClipItem; i: Integer;
 begin
   ci := TClipItem(Node.Data);
@@ -1084,6 +1112,12 @@ begin
   if ci.Lock then i := i + 3;
   Node.ImageIndex := i;
   Node.SelectedIndex := i;
+end;
+
+procedure TSimpleClipForm.TheTreeViewAddition(Sender: TObject;
+  Node: TTreeNode);
+begin
+  SetNodeImage(Node);
 
   ShowScrollBar(TheTreeView.Handle, SB_HORZ , False);
 //  count := GetItemCount;
@@ -3063,6 +3097,113 @@ procedure TSimpleClipForm.ApplicationEvents1Idle(Sender: TObject;
   var Done: Boolean);
 begin
   SetFormsCaption(db_file);
+end;
+
+procedure TSimpleClipForm.SetSortAsc(const Value: Boolean);
+begin
+  FSortAsc := Value;
+end;
+
+procedure TSimpleClipForm.SetSortMode(const Value: TSortMode);
+begin
+  if FSortMode = Value then begin
+    SortAsc := not SortAsc;
+  end else begin
+    if Value = smDate then begin
+      SortAsc := False;
+    end else begin
+      SortAsc := True;
+    end;
+  end;
+  FSortMode := Value;
+  SortTree;
+end;
+
+//function CustomSortProc(Node1, Node2: TTreeNode; Data: Integer): Integer; stdcall;
+//var ci1, ci2: TClipItem;
+//begin
+//  ci1 := TClipItem(Node1.Data);
+//  ci2 := TClipItem(Node2.Data);
+//  Result := 0;
+//  case SimpleClipForm.SortMode of
+//    smName: Result := CompareText(Node1.Text, Node2.Text);
+//    smType: Result := CompareValue(Ord(ci1.ClipMode), Ord(ci2.ClipMode));
+//    else Result := CompareDateTime(ci1.CreatedDate, ci2.CreatedDate);
+//  end;
+//  if not SimpleClipForm.SortAsc then
+//    Result := -Result;
+//  if ci1.Lock or ci2.Lock then begin
+//    Result := 0;
+//  end;
+//end;
+
+procedure TSimpleClipForm.SetSortCheck;
+begin
+  case SortMode of
+    smName: SortNameAction.Checked := True;
+    smType: SortTypeAction.Checked := True;
+    else SortDateAction.Checked := True;
+  end;
+end;
+
+procedure TSimpleClipForm.SortTree;
+var i: Integer; n: TTreeNode;
+begin
+  TheTreeView.Items.BeginUpdate;
+  TheTreeView.CustomSort(nil, 0);
+  SetSortCheck;
+  TheTreeView.Items.EndUpdate;
+//  TheTreeView.ShowRoot := True;
+//  TheTreeView.ShowLines := True;
+//  TheTreeView.ShowRoot := False;
+//  TheTreeView.ShowLines := False;
+//  TheTreeView.ScrollBy(-1000, 0);
+  SendMessage(TheTreeView.Handle, WM_HSCROLL, SB_PAGELEFT, 0);
+//  for i := 0 to TheTreeView.Items.Count-1 do begin
+//    n := TheTreeView.Items[i];
+//    SetNodeImage(n);
+//  end;
+end;
+
+procedure TSimpleClipForm.TheTreeViewCompare(Sender: TObject; Node1,
+  Node2: TTreeNode; Data: Integer; var Compare: Integer);
+var ci1, ci2: TClipItem;
+begin
+  ci1 := TClipItem(Node1.Data);
+  ci2 := TClipItem(Node2.Data);
+  Compare := 0;
+  case SortMode of
+    smName: Compare := CompareText(Node1.Text, Node2.Text);
+    smType: Compare := CompareValue(Ord(ci1.ClipMode), Ord(ci2.ClipMode));
+    else Compare := CompareDateTime(ci1.CreatedDate, ci2.CreatedDate);
+  end;
+  if not SortAsc then
+    Compare := -Compare;
+  if ci1.Lock or ci2.Lock then begin
+    Compare := 0;
+  end;
+//  SetNodeImage(Node1);
+//  SetNodeImage(Node2);
+//   else if ci1.Lock and ci2.Lock = False then begin
+//    Compare := 1;
+//  end else if ci1.Lock = False and ci2.Lock then begin
+//    Compare := -1;
+//  end;
+end;
+
+procedure TSimpleClipForm.SortDateActionExecute(Sender: TObject);
+begin
+  SortMode := smDate;
+end;
+
+procedure TSimpleClipForm.SortNameActionExecute(Sender: TObject);
+begin
+  SortMode := smName;
+end;
+
+procedure TSimpleClipForm.SortTypeActionExecute(Sender: TObject);
+begin
+  SortMode := smType;
 end;
 
 end.

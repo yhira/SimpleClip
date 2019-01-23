@@ -46,6 +46,8 @@ type
   //obj
   TClipMode = (cmText, cmImage, cmDrop);
 
+  TSortMode = (smDate, smName, smType);
+
   //mouse hook func
   TInstallMouseHook = function (Wnd: HWND): Boolean; stdcall;
   TUnInstallMouseHook = procedure ; stdcall;
